@@ -3,6 +3,7 @@ from multiprocessing.managers import SyncManager
 import signal
 from time import sleep
 import sys
+import re
 from base import init_plugins
 
 # initializer for SyncManager
@@ -17,7 +18,14 @@ class CollectorProcess():
         self.collector  = collector
         self.parent_p   = parent_p
         self.child_p    = child_p
+        self.running    = True
 
+def number_running(collector_dict):
+    run_cnt = 0
+    for each in collector_dict:
+        if collector_dict[each].running:
+            run_cnt += 1
+    return run_cnt
 
 
 if __name__ == '__main__':
@@ -37,6 +45,7 @@ if __name__ == '__main__':
             p = Process(target=collector.run, args=(numCollectors, parent_p, child_p))
             p.start()
             collectors[collector.name] = CollectorProcess(p, collector, parent_p, child_p)
+            collectors[collector.name].running = True
 
         # Send a SAMPLE msg to each collector
         for each in collectors:
@@ -45,7 +54,7 @@ if __name__ == '__main__':
             print("Sending {0} to {1}".format(msg, name))
             collectors[each].parent_p.send(msg)
 
-        msg_cnt = 0
+        stop_cnt = 0
         cont = 1
         while cont:
             try:
@@ -53,12 +62,17 @@ if __name__ == '__main__':
                     if not collectors[each].parent_p.poll():
                         continue
                     msg = collectors[each].parent_p.recv()
-                    if msg is not None:
-                        print("Parent recv'd a {0} message from a child".format(msg))
-                        msg_cnt += 1
-                        if msg_cnt == len(collectors):
-                            print("Got one from every child - shutting down")
+                    m = re.search('(.+)-(.+)', msg)
+                    msg_type = m.group(1)
+                    msg_from = m.group(2)
+                    if msg_type == "STOPPED":
+                        print("{0} message recv'd from {1}".format(msg, msg_from))
+                        collectors[msg_from].running = False
+                        if number_running(collectors) == 0:
+                            print("No one is running - shutting down - I wouldn't really do this for realsies")
                             cont = 0
+                    elif msg_type is not None:
+                        print("Parent recv'd a {0} message from {1} - {2}".format(msg_type, msg_from, msg))
             except:
                 print("Error checking pipes")
 
