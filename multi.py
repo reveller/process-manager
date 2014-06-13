@@ -21,7 +21,6 @@ class CollectorProcess():
 
 
 if __name__ == '__main__':
-    processes  = []
     collectors = {}
 
     manager = SyncManager()
@@ -37,7 +36,6 @@ if __name__ == '__main__':
             parent_p, child_p = Pipe()
             p = Process(target=collector.run, args=(numCollectors, parent_p, child_p))
             p.start()
-            processes.append(p)
             collectors[collector.name] = CollectorProcess(p, collector, parent_p, child_p)
 
         # Send a SAMPLE msg to each collector
@@ -46,6 +44,23 @@ if __name__ == '__main__':
             msg = "SAMPLE-" + name
             print("Sending {0} to {1}".format(msg, name))
             collectors[each].parent_p.send(msg)
+
+        msg_cnt = 0
+        cont = 1
+        while cont:
+            try:
+                for each in collectors:
+                    if not collectors[each].parent_p.poll():
+                        continue
+                    msg = collectors[each].parent_p.recv()
+                    if msg is not None:
+                        print("Parent recv'd a {0} message from a child".format(msg))
+                        msg_cnt += 1
+                        if msg_cnt == len(collectors):
+                            print("Got one from every child - shutting down")
+                            cont = 0
+            except:
+                print("Error checking pipes")
 
         # Send a poison pill for each collector in order to signal a terminate
         for each in collectors:

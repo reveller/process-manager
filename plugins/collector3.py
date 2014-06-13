@@ -18,6 +18,8 @@ class collector(Plugin):
                         print("{0} is exiting".format(self.name))
                         break
                     print("{0} recv'd a {1} message from the parent".format(self.name, msg))
+                    return_msg = "RECVD-" + msg
+                    child_p.send(return_msg)
                 except EOFError:
                     print("{0} hit an EOFError".format(self.name))
                     break
