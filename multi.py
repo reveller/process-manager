@@ -59,20 +59,29 @@ if __name__ == '__main__':
         while cont:
             try:
                 for each in collectors:
-                    if not collectors[each].parent_p.poll():
-                        continue
-                    msg = collectors[each].parent_p.recv()
-                    m = re.search('(.+)-(.+)', msg)
-                    msg_type = m.group(1)
-                    msg_from = m.group(2)
-                    if msg_type == "STOPPED":
-                        print("{0} message recv'd from {1}".format(msg, msg_from))
-                        collectors[msg_from].running = False
-                        if number_running(collectors) == 0:
-                            print("No one is running - shutting down - I wouldn't really do this for realsies")
-                            cont = 0
-                    elif msg_type is not None:
-                        print("Parent recv'd a {0} message from {1} - {2}".format(msg_type, msg_from, msg))
+                    # while there are msgs in the pipe from this collector
+                    #   read and process them
+                    #   (this could get ugly is a collector streams msgs
+                    #   faster than the parent can process them [like
+                    #   httpd access logs].  need to do something to prevent
+                    #   spamming the pipe and not letting others have a turn)
+                    # once the pipe has cleared once for each collector,
+                    #   sleep for a second to give th rest of the system a
+                    #   chance
+                    while collectors[each].parent_p.poll():
+                        msg = collectors[each].parent_p.recv()
+                        m = re.search('(.+)-(.+)', msg)
+                        msg_type = m.group(1)
+                        msg_from = m.group(2)
+                        if msg_type == "STOPPED":
+                            print("{0} message recv'd from {1}".format(msg, msg_from))
+                            collectors[msg_from].running = False
+                            if number_running(collectors) == 0:
+                                print("No one is running - shutting down - I wouldn't really do this for realsies")
+                                cont = 0
+                        elif msg_type is not None:
+                            print("Parent recv'd a {0} message from {1} - {2}".format(msg_type, msg_from, msg))
+                sleep(1)
             except:
                 print("Error checking pipes")
 
