@@ -2,7 +2,6 @@ import os
 import sys
 import abc
 
-collectors = {}
 
 class Plugin(object):
     __metaclass__ = abc.ABCMeta
@@ -12,7 +11,7 @@ class Plugin(object):
         return
 
     @abc.abstractmethod
-    def run(self, process_number, shared_array):
+    def run(self, process_number, tasks, results):
         return
 
     @abc.abstractmethod
@@ -23,12 +22,14 @@ class Plugin(object):
 def init_plugins():
     '''simple plugin initializer
     '''
-    find_plugins()
-    #register_plugins()
-    dump_plugins()
+    return find_plugins()
+    ##register_plugins()
+    #dump_plugins()
 
 def find_plugins():
-    '''find all files in the plugin directory and imports them'''
+    '''find all files in the plugins directory and import them'''
+    collectors = {}
+
     root_dir = os.path.dirname(os.path.realpath(__file__))
     plugin_dir = root_dir + '/plugins/'
     print("Reading plugins from {0}".format(plugin_dir))
@@ -46,6 +47,7 @@ def find_plugins():
             collectors[name] = mod
         except:
             print("Error importing {0}".format(plugin))
+    return collectors
 
 def dump_plugins():
     for sc in Plugin.__subclasses__():
