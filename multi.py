@@ -3,7 +3,7 @@ from multiprocessing.managers import SyncManager
 import signal
 from time import sleep
 import sys
-from base import init_plugins
+from base import init_plugins, collectors
 
 # initializer for SyncManager
 def mgr_init():
@@ -25,14 +25,12 @@ def f(process_number, shared_array):
 if __name__ == '__main__':
 
     init_plugins()
-    sys.exit(0)
+    # sys.exit(0)
 
     processes = []
 
   # now using SyncManager vs a Manager
     manager = SyncManager()
-
-    print type(manager), manager.__dict__
 
     # explicitly starting the manager, and telling it to ignore the interrupt signal
     manager.start(mgr_init)
@@ -40,10 +38,15 @@ if __name__ == '__main__':
     try:
         shared_array = manager.list()
 
-        for i in xrange(4):
-            p = Process(target=f, args=(i, shared_array))
+        #for i in xrange(4):
+        i = 1
+        for each in collectors:
+            f = collectors[each].collector()
+            #p = Process(target=f, args=(i, shared_array))
+            p = Process(target=f.run, args=(i, shared_array))
             p.start()
             processes.append(p)
+            i += 1
 
         try:
             for process in processes:
